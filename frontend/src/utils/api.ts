@@ -1,8 +1,8 @@
 import axios, { AxiosError } from 'axios';
+import { API_BASE_URL } from '../config';
 
 const api = axios.create({
-  baseURL: 'your_api_base_url_here',
-  // You can add other configuration options here
+  baseURL: API_BASE_URL,
 });
 
 // Add a response interceptor
