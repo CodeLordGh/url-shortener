@@ -25,7 +25,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Add this near the top of your file, after other middleware
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
@@ -191,42 +190,6 @@ app.get('/user/urls', authenticateToken, async (req: any, res: any) => {
     res.status(500).json({ error: 'Error fetching user URLs' });
   }
 });
-
-// // Add this new route near the other authenticated routes
-// app.post('/ai-chat', authenticateToken, async (req: any, res: any) => {
-//   try {
-//     const { message } = req.body;
-//     const response = await handleAIChat(req.user.userId, message);
-//     console.log('AI Chat Response:', response); // Add this line
-//     res.json(response);
-//   } catch (error) {
-//     console.error('Error in AI chat:', error);
-//     res.status(500).json({ error: 'Error processing AI chat request' });
-//   }
-// });
-
-// app.post('/ai-action', authenticateToken, async (req: any, res: any) => {
-//   try {
-//     const { action, data } = req.body;
-//     const response = await performAction(req.user.userId, action, data);
-//     res.json({ response });
-//   } catch (error) {
-//     console.error('Error performing AI action:', error);
-//     res.status(500).json({ error: 'Error performing AI action' });
-//   }
-// });
-
-// Add this at the end of your file, before starting the server
-// app.use((req: Request, res: Response) => {
-//   res.status(404).json({ error: 'Not Found' });
-// });
-
-// app.use((err: Error, req: Request, res: Response, next: Function) => {
-//   console.error(err.stack);
-//   res.status(500).json({ error: 'Internal Server Error' });
-// });
-
-// app.use('/api/ai', aiRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
