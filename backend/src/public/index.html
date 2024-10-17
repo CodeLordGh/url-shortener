@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        input, button {
+            font-size: 16px;
+            padding: 5px 10px;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        #result div {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>URL Shortener</h1>
+    <form id="shortenForm">
+        <input type="text" id="urlInput" placeholder="Enter URL to shorten" required>
+        <button type="submit">Shorten</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        // Add this line to set the base URL for your API
+        const API_BASE_URL = 'http://localhost:3000'; // Adjust this to match your backend URL
+
+        document.getElementById('shortenForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const url = document.getElementById('urlInput').value;
+            try {
+                // Update the axios call to use the API_BASE_URL
+                const response = await axios.post(`${API_BASE_URL}/shorten`, { url });
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <div>Shortened URL: <a href="${response.data.shortUrl}" target="_blank">${response.data.shortUrl}</a></div>
+                    <div>Analytics URL: <a href="${response.data.analyticsUrl}" target="_blank">${response.data.analyticsUrl}</a></div>
+                `;
+            } catch (error) {
+                document.getElementById('result').textContent = `Error: ${error.response?.data?.error || error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
