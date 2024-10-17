@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Link } from 'react-router-dom';
 import { Tooltip } from 'react-tooltip';
+import { API_BASE_URL } from '../config';
 
 const Home = () => {
   const [url, setUrl] = useState('');
@@ -22,7 +23,7 @@ const Home = () => {
     setError('');
     try {
       const response = await axios.post<{ shortUrl: string; expiresAt: string | null }>(
-        'http://localhost:3000/shorten',
+        `${API_BASE_URL}/shorten`,
         { url },
         {
           headers: isAuthenticated ? { Authorization: `Bearer ${token}` } : {}

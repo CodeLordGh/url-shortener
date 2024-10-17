@@ -5,6 +5,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, ExternalLink, BarChart2, Calendar, Tag, MessageSquare, Loader, Settings } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
+import { API_BASE_URL } from '../config';
 
 interface Url {
   _id: string;
@@ -49,7 +50,7 @@ const Dashboard: React.FC = () => {
   const fetchUrls = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get<Url[]>('http://localhost:3000/user/urls', {
+      const response = await axios.get<Url[]>(`${API_BASE_URL}/user/urls`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -110,7 +111,7 @@ const Dashboard: React.FC = () => {
 
     try {
       const response = await axios.post<AIResponse>(
-        'http://localhost:3000/api/ai/chat',
+        `${API_BASE_URL}/api/ai/chat`,
         { message: inputMessage },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -201,7 +202,7 @@ const Dashboard: React.FC = () => {
             <div className="p-4">
               <p className="text-gray-600 mb-2 flex items-center">
                 <Link className="mr-2" />
-                Short URL: <a href={`http://localhost:3000/${url.shortCode}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">{`localhost:3000/${url.shortCode}`}</a>
+                Short URL: <a href={`${API_BASE_URL}/${url.shortCode}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">{`${new URL(API_BASE_URL).host}/${url.shortCode}`}</a>
               </p>
               <p className="text-gray-600 mb-2 flex items-center">
                 <BarChart2 className="mr-2" />

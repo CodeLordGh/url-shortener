@@ -32,6 +32,8 @@ app.use((req, res, next) => {
 
 mongoose.connect(process.env.MONGODB_URI || '');
 
+console.log(process.env.MONGODB_URI);
+
 app.use('/api/ai', aiRoutes);
 app.post('/register', async (req: Request, res: Response) => {
   try {
