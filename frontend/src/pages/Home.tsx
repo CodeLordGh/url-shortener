@@ -23,7 +23,7 @@ const Home = () => {
     setError('');
     try {
       const response = await axios.post<{ shortUrl: string; expiresAt: string | null }>(
-        `${API_BASE_URL}/shorten`,
+        `${API_BASE_URL}/api/shorten`,
         { url },
         {
           headers: isAuthenticated ? { Authorization: `Bearer ${token}` } : {}

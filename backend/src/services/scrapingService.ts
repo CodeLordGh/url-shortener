@@ -3,16 +3,19 @@ import * as cheerio from 'cheerio';
 import Scraping from '../models/Scraping';
 import mongoose from 'mongoose';
 
-export async function scrapeWebsite(userId: string, url: string) {
-  console.log(`Starting scraping for user ${userId} on URL: ${url}`);
+export async function scrapeWebsite(userId: string | null, url: string) {
+  console.log(`Starting scraping for user ${userId || 'anonymous'} on URL: ${url}`);
   try {
-    // Create a new scraping session
-    const scrapingSession = new Scraping({
-      userId: new mongoose.Types.ObjectId(userId),
-      url,
-      status: 'in_progress'
-    });
-    await scrapingSession.save();
+    // Create a new scraping session only for authenticated users
+    let scrapingSession;
+    if (userId) {
+      scrapingSession = new Scraping({
+        userId: new mongoose.Types.ObjectId(userId),
+        url,
+        status: 'in_progress'
+      });
+      await scrapingSession.save();
+    }
 
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
@@ -36,12 +39,14 @@ export async function scrapeWebsite(userId: string, url: string) {
       headings = $('h1, h2, h3').map((i, el) => $(el).text().trim()).get();
     }
     
-    // Update the scraping session with the results
-    scrapingSession.pageTitle = pageTitle as any;
-    scrapingSession.mainContent = mainContent;
-    scrapingSession.status = 'completed';
-    scrapingSession.completedAt = new Date();
-    await scrapingSession.save();
+    // Update the scraping session with the results only for authenticated users
+    if (userId && scrapingSession) {
+      scrapingSession.pageTitle = pageTitle as any;
+      scrapingSession.mainContent = mainContent;
+      scrapingSession.status = 'completed';
+      scrapingSession.completedAt = new Date();
+      await scrapingSession.save();
+    }
 
     return {
       message: 'Scraping completed successfully',
@@ -49,16 +54,22 @@ export async function scrapeWebsite(userId: string, url: string) {
     };
   } catch (error) {
     console.error('Error during scraping:', error);
-    // Update the scraping session status to 'stopped' in case of an error
-    await Scraping.findOneAndUpdate(
-      { userId: new mongoose.Types.ObjectId(userId), status: 'in_progress' },
-      { status: 'stopped', completedAt: new Date() }
-    );
-    throw new Error('Failed to scrape the website');
+    // Update the scraping session status to 'stopped' in case of an error (only for authenticated users)
+    if (userId) {
+      await Scraping.findOneAndUpdate(
+        { userId: new mongoose.Types.ObjectId(userId), status: 'in_progress' },
+        { status: 'stopped', completedAt: new Date() }
+      );
+    }
+    throw error; // Propagate the original error
   }
 }
 
 export async function stopScraping(userId: string) {
+  if (!userId) {
+    throw new Error('User ID is required to stop scraping');
+  }
+
   console.log(`Stopping scraping for user ${userId}`);
   try {
     const result = await Scraping.findOneAndUpdate(

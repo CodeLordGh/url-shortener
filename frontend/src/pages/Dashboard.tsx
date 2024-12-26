@@ -1,38 +1,15 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link, ExternalLink, BarChart2, Calendar, Tag, MessageSquare, Loader, Settings } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Loader, Settings } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 import { API_BASE_URL } from '../config';
-
-interface Url {
-  _id: string;
-  originalUrl: string;
-  shortCode: string;
-  clicks: number;
-  aiDescription: string;
-  aiTags: string[];
-  createdAt: string;
-  expiresAt: string | null;
-}
-
-interface ChatMessage {
-  role: 'user' | 'ai';
-  content: string;
-}
-
-interface AIResponse {
-  response: string;
-  structured?: {
-    type: string;
-    shortenedLink: string;
-    description: string;
-    tags: string[];
-    advice?: string[]; // Make advice optional
-  };
-}
+import { Url, ChatMessage, AIResponse } from '../types/url';
+import { UrlGrid } from '../features/urls/UrlGrid';
+import { AiChat } from '../features/chat/AiChat';
+import { CommandHelp } from '../features/commands/CommandHelp';
 
 const Dashboard: React.FC = () => {
   const [urls, setUrls] = useState<Url[]>([]);
@@ -44,38 +21,37 @@ const Dashboard: React.FC = () => {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [suggestedCommand, setSuggestedCommand] = useState('');
   const [showShortCodeList, setShowShortCodeList] = useState(false);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchUrls = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get<Url[]>(`${API_BASE_URL}/user/urls`, {
+      console.log('Fetching URLs with token:', token);
+      const response = await axios.get<Url[]>(`${API_BASE_URL}/api/user/urls`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      console.log('Received URLs:', response.data);
       setUrls(response.data);
     } catch (error) {
       console.error('Error fetching URLs:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response:', error.response?.data);
+        console.error('Status:', error.response?.status);
+      }
     } finally {
       setIsLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    fetchUrls();
-  }, [fetchUrls]);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (token) {
+      console.log('Token available, fetching URLs');
+      fetchUrls();
+    } else {
+      console.log('No token available, skipping URL fetch');
     }
-  }, [chatMessages]);
+  }, [fetchUrls, token]);
 
   const formatAIResponse = (aiResponse: AIResponse): string => {
     if (aiResponse.structured && aiResponse.structured.type === 'new_link') {
@@ -120,7 +96,6 @@ const Dashboard: React.FC = () => {
       const newAiMessage: ChatMessage = { role: 'ai', content: formattedResponse };
       setChatMessages(prevMessages => [...prevMessages, newAiMessage]);
 
-      // Fetch URLs after any command action
       if (inputMessage.startsWith('/delete') || inputMessage.startsWith('/add') || inputMessage.startsWith('/startscrap')) {
         await fetchUrls();
       }
@@ -151,7 +126,6 @@ const Dashboard: React.FC = () => {
     const value = e.target.value;
     setInputMessage(value);
 
-    // Suggest commands
     if (value.startsWith('/')) {
       if (value.startsWith('/delete')) {
         setSuggestedCommand('/delete [shortCode]');
@@ -184,66 +158,6 @@ const Dashboard: React.FC = () => {
     setShowShortCodeList(false);
   };
 
-  const UrlGrid: React.FC<{ urls: Url[] }> = React.memo(({ urls }) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <AnimatePresence>
-        {urls.map((url) => (
-          <motion.div
-            key={url._id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            whileHover={{ scale: 1.03 }}
-            className="bg-white shadow-lg rounded-lg overflow-hidden"
-          >
-            <div className="bg-blue-600 text-white p-4">
-              <h2 className="text-xl font-semibold truncate">{url.originalUrl}</h2>
-            </div>
-            <div className="p-4">
-              <p className="text-gray-600 mb-2 flex items-center">
-                <Link className="mr-2" />
-                Short URL: <a href={`${API_BASE_URL}/${url.shortCode}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-1">{`${new URL(API_BASE_URL).host}/${url.shortCode}`}</a>
-              </p>
-              <p className="text-gray-600 mb-2 flex items-center">
-                <BarChart2 className="mr-2" />
-                Clicks: {url.clicks}
-              </p>
-              <p className="text-gray-600 mb-2 flex items-center">
-                <Calendar className="mr-2" />
-                Created: {new Date(url.createdAt).toLocaleDateString()}
-              </p>
-              {url.expiresAt && (
-                <p className="text-gray-600 mb-2 flex items-center">
-                  <Calendar className="mr-2" />
-                  Expires: {new Date(url.expiresAt).toLocaleDateString()}
-                </p>
-              )}
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2 flex items-center">
-                  <Tag className="mr-2" />
-                  AI Description:
-                </h3>
-                <p className="text-gray-700">{url.aiDescription}</p>
-              </div>
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">AI Tags:</h3>
-                <div className="flex flex-wrap">
-                  {url.aiTags.map((tag, index) => (
-                    <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium mr-2 mb-2 px-2.5 py-0.5 rounded">{tag}</span>
-                  ))}
-                </div>
-              </div>
-              <a href={url.originalUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center text-blue-600 hover:underline">
-                Visit Original URL
-                <ExternalLink className="ml-1" size={16} />
-              </a>
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  ));
-
   const memoizedUrlGrid = useMemo(() => {
     return <UrlGrid urls={urls} />;
   }, [urls]);
@@ -257,92 +171,20 @@ const Dashboard: React.FC = () => {
     >
       <h1 className="text-4xl font-bold mb-8 text-center dark:text-white">Welcome, {username}!</h1>
       
-      {/* AI Chat Section */}
-      <div className="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-        <div className="bg-blue-600 text-white p-4">
-          <h2 className="text-xl font-semibold flex items-center">
-            <MessageSquare className="mr-2" />
-            AI Assistant
-          </h2>
-        </div>
-        <div className="p-4">
-          <div 
-            ref={chatContainerRef}
-            className="h-64 overflow-y-auto mb-4 border border-gray-200 rounded p-2"
-          >
-            {chatMessages.map((msg, index) => (
-              <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                <span 
-                  className={`inline-block p-2 rounded-lg ${msg.role === 'user' ? 'bg-blue-100' : 'bg-gray-100'}`}
-                  dangerouslySetInnerHTML={{ __html: msg.content }}
-                />
-              </div>
-            ))}
-            {isAiThinking && (
-              <div className="flex items-center justify-center">
-                <Loader className="animate-spin mr-2" />
-                <span>AI is thinking...</span>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputMessage}
-              onChange={handleInputChange}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              className="flex-grow border border-gray-300 rounded-t p-2"
-              placeholder="Ask about your links or use commands (/add, /delete, /list, /startscrap, /stopscrap)"
-              disabled={isAiThinking}
-            />
-            {suggestedCommand && (
-              <div className="bg-gray-100 p-2 text-sm text-gray-600">
-                Suggested: {suggestedCommand}
-              </div>
-            )}
-            {showShortCodeList && (
-              <div className="bg-gray-100 p-2 max-h-32 overflow-y-auto">
-                <p className="text-sm font-semibold mb-1">Available short codes:</p>
-                {urls.map((url) => (
-                  <button
-                    key={url.shortCode}
-                    onClick={() => handleShortCodeClick(url.shortCode)}
-                    className="text-sm text-blue-600 hover:underline mr-2"
-                  >
-                    {url.shortCode}
-                  </button>
-                ))}
-              </div>
-            )}
-            <button
-              onClick={handleSendMessage}
-              className="bg-blue-600 text-white px-4 py-2 rounded-b disabled:bg-blue-300"
-              disabled={isAiThinking}
-            >
-              Send
-            </button>
-          </div>
-        </div>
-      </div>
+      <AiChat
+        chatMessages={chatMessages}
+        inputMessage={inputMessage}
+        isAiThinking={isAiThinking}
+        suggestedCommand={suggestedCommand}
+        showShortCodeList={showShortCodeList}
+        urls={urls}
+        onInputChange={handleInputChange}
+        onSendMessage={handleSendMessage}
+        onShortCodeClick={handleShortCodeClick}
+      />
 
-      {/* Command Help Section */}
-      <div className="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-        <div className="bg-blue-600 text-white p-4">
-          <h2 className="text-xl font-semibold">Available Commands</h2>
-        </div>
-        <div className="p-4">
-          <ul className="list-disc list-inside">
-            <li><code>/add [url]</code> - Add a new link</li>
-            <li><code>/delete [shortCode]</code> - Delete a link</li>
-            <li><code>/list</code> - List all your links</li>
-            <li><code>/startscrap [url]</code> - Start scraping a webpage</li>
-            <li><code>/stopscrap</code> - Stop the current scraping session</li>
-          </ul>
-        </div>
-      </div>
+      <CommandHelp />
 
-      {/* Existing URLs grid */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader className="animate-spin mr-2" />

@@ -30,8 +30,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password: string) => {
     try {
-      const response = await axios.post<{ token: string }>(`${API_BASE_URL}/login`, { username, password });
+      console.log('Attempting login for user:', username);
+      const response = await axios.post<{ token: string }>(`${API_BASE_URL}/api/auth/login`, { username, password });
       const { token } = response.data;
+      console.log('Login successful, received token');
       localStorage.setItem('token', token);
       localStorage.setItem('username', username);
       setToken(token);
@@ -39,15 +41,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Login failed:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response:', error.response?.data);
+        console.error('Status:', error.response?.status);
+      }
       throw new Error('Login failed');
     }
   };
 
   const register = async (username: string, password: string) => {
     try {
-      await axios.post(`${API_BASE_URL}/register`, { username, password });
+      console.log('Attempting registration for user:', username);
+      await axios.post(`${API_BASE_URL}/api/auth/register`, { username, password });
+      console.log('Registration successful');
     } catch (error) {
       console.error('Registration failed:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response:', error.response?.data);
+        console.error('Status:', error.response?.status);
+      }
       throw new Error('Registration failed');
     }
   };

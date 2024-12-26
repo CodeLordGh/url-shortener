@@ -43,15 +43,18 @@ const Scraping_1 = __importDefault(require("../models/Scraping"));
 const mongoose_1 = __importDefault(require("mongoose"));
 function scrapeWebsite(userId, url) {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log(`Starting scraping for user ${userId} on URL: ${url}`);
+        console.log(`Starting scraping for user ${userId || 'anonymous'} on URL: ${url}`);
         try {
-            // Create a new scraping session
-            const scrapingSession = new Scraping_1.default({
-                userId: new mongoose_1.default.Types.ObjectId(userId),
-                url,
-                status: 'in_progress'
-            });
-            yield scrapingSession.save();
+            // Create a new scraping session only for authenticated users
+            let scrapingSession;
+            if (userId) {
+                scrapingSession = new Scraping_1.default({
+                    userId: new mongoose_1.default.Types.ObjectId(userId),
+                    url,
+                    status: 'in_progress'
+                });
+                yield scrapingSession.save();
+            }
             const response = yield axios_1.default.get(url);
             const $ = cheerio.load(response.data);
             // Get the page title
@@ -70,12 +73,14 @@ function scrapeWebsite(userId, url) {
                 mainContent = $('body').text().trim();
                 headings = $('h1, h2, h3').map((i, el) => $(el).text().trim()).get();
             }
-            // Update the scraping session with the results
-            scrapingSession.pageTitle = pageTitle;
-            scrapingSession.mainContent = mainContent;
-            scrapingSession.status = 'completed';
-            scrapingSession.completedAt = new Date();
-            yield scrapingSession.save();
+            // Update the scraping session with the results only for authenticated users
+            if (userId && scrapingSession) {
+                scrapingSession.pageTitle = pageTitle;
+                scrapingSession.mainContent = mainContent;
+                scrapingSession.status = 'completed';
+                scrapingSession.completedAt = new Date();
+                yield scrapingSession.save();
+            }
             return {
                 message: 'Scraping completed successfully',
                 data: { pageTitle, headings, mainContent }
@@ -83,14 +88,19 @@ function scrapeWebsite(userId, url) {
         }
         catch (error) {
             console.error('Error during scraping:', error);
-            // Update the scraping session status to 'stopped' in case of an error
-            yield Scraping_1.default.findOneAndUpdate({ userId: new mongoose_1.default.Types.ObjectId(userId), status: 'in_progress' }, { status: 'stopped', completedAt: new Date() });
-            throw new Error('Failed to scrape the website');
+            // Update the scraping session status to 'stopped' in case of an error (only for authenticated users)
+            if (userId) {
+                yield Scraping_1.default.findOneAndUpdate({ userId: new mongoose_1.default.Types.ObjectId(userId), status: 'in_progress' }, { status: 'stopped', completedAt: new Date() });
+            }
+            throw error; // Propagate the original error
         }
     });
 }
 function stopScraping(userId) {
     return __awaiter(this, void 0, void 0, function* () {
+        if (!userId) {
+            throw new Error('User ID is required to stop scraping');
+        }
         console.log(`Stopping scraping for user ${userId}`);
         try {
             const result = yield Scraping_1.default.findOneAndUpdate({ userId: new mongoose_1.default.Types.ObjectId(userId), status: 'in_progress' }, { status: 'stopped', completedAt: new Date() }, { new: true });
