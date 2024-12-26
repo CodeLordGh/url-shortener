@@ -53,6 +53,23 @@ frontend/
 
 The frontend is configured to work with the backend running on `http://localhost:3000`. If your backend is running on a different URL, update the `API_BASE_URL` in the following file:
 
+The frontend uses environment variables for configuration. There are two environment files:
+
+- `.env.development` - Used during development
+- `.env.production` - Used for production builds
+
+Available environment variables:
+
+```bash
+# Backend API URL
+VITE_API_BASE_URL=https://url-shortener-nl18.onrender.com
+
+# Base URL for shortened links
+VITE_SHORTENER_BASE_URL=https://url-shortener-nl18.onrender.com
+```
+
+For local development, these will default to `http://localhost:3000`.
+
 ## Available Scripts
 
 In the project directory, you can run:
@@ -146,11 +163,13 @@ npm run dev
 
 ## Production
 
-For production deployment, build the project:
+To build for production:
 
 ```bash
 npm run build
 ```
+
+This will use the production environment variables from `.env.production`.
 
 ## Further Documentation
 
